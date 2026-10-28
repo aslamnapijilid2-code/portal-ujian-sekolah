@@ -1,0 +1,8 @@
+{
+  "name": "Portal Ujian Online SDN 4 Sojol Utara",
+  "description": "Portal Ujian Online SDN 4 Sojol Utara dengan menu Siswa (pengerjaan berbasis waktu, navigasi soal bergambar, penskoran otomatis) dan menu Guru (analisis butir soal dan rekap nilai).",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
