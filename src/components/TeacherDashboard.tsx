@@ -1348,10 +1348,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3 text-xs">
               <div className="flex justify-between items-center text-slate-700">
-                <span className="text-slate-500">Kode Akses Unik Guru:</span>
-                <code className="bg-white px-2.5 py-1 rounded border border-slate-200 font-mono font-bold text-slate-900">
-                  @04051993Aslam
-                </code>
+                <span className="text-slate-500">Status Keamanan Akses:</span>
+                <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  Terproteksi Server Environment Variable
+                </span>
               </div>
               <div className="flex justify-between items-center text-slate-700">
                 <span className="text-slate-500">Kode Sesi Ujian Aktif:</span>

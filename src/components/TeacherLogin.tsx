@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, KeyRound, User, AlertCircle, ArrowRight, Eye, EyeOff, Lock } from 'lucide-react';
+import { ShieldCheck, KeyRound, User, AlertCircle, ArrowRight, Eye, EyeOff, Lock, Loader2 } from 'lucide-react';
 
 interface TeacherLoginProps {
   onLoginSuccess: (teacherName: string) => void;
@@ -14,10 +14,9 @@ export const TeacherLogin: React.FC<TeacherLoginProps> = ({
   const [accessCode, setAccessCode] = useState('');
   const [showCode, setShowCode] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const REQUIRED_CODE = '@04051993Aslam';
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!teacherName.trim()) {
@@ -25,13 +24,38 @@ export const TeacherLogin: React.FC<TeacherLoginProps> = ({
       return;
     }
 
-    if (accessCode.trim() !== REQUIRED_CODE) {
-      setErrorMsg('Kode akses tidak valid. Silakan periksa kembali kode akses pengajar.');
+    if (!accessCode.trim()) {
+      setErrorMsg('Silakan masukkan kode akses pengajar.');
       return;
     }
 
+    setIsSubmitting(true);
     setErrorMsg('');
-    onLoginSuccess(teacherName.trim());
+
+    try {
+      const response = await fetch('/api/teacher/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teacherName: teacherName.trim(),
+          password: accessCode.trim(),
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok && data.success) {
+        onLoginSuccess(data.teacherName || teacherName.trim());
+      } else {
+        setErrorMsg(data.message || 'Kode akses tidak valid. Silakan periksa kembali kode akses pengajar.');
+      }
+    } catch {
+      setErrorMsg('Gagal menghubungi server verifikasi. Pastikan koneksi server aktif.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -68,10 +92,11 @@ export const TeacherLogin: React.FC<TeacherLoginProps> = ({
               <input
                 type="text"
                 required
+                disabled={isSubmitting}
                 value={teacherName}
                 onChange={(e) => setTeacherName(e.target.value)}
                 placeholder="Contoh: Pak Aslam, S.Pd."
-                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors disabled:opacity-60"
               />
             </div>
           </div>
@@ -85,15 +110,17 @@ export const TeacherLogin: React.FC<TeacherLoginProps> = ({
               <input
                 type={showCode ? 'text' : 'password'}
                 required
+                disabled={isSubmitting}
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value)}
                 placeholder="Masukkan kode akses pengajar"
-                className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors font-mono"
+                className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors font-mono disabled:opacity-60"
               />
               <button
                 type="button"
                 onClick={() => setShowCode(!showCode)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                disabled={isSubmitting}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
                 aria-label="Tampilkan atau sembunyikan kode"
               >
                 {showCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -108,10 +135,20 @@ export const TeacherLogin: React.FC<TeacherLoginProps> = ({
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
+              disabled={isSubmitting}
+              className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-semibold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
             >
-              <span>Masuk ke Dasbor Guru</span>
-              <ArrowRight className="w-4 h-4" />
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Memverifikasi...</span>
+                </>
+              ) : (
+                <>
+                  <span>Masuk ke Dasbor Guru</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -120,7 +157,8 @@ export const TeacherLogin: React.FC<TeacherLoginProps> = ({
           <button
             type="button"
             onClick={onSwitchToStudent}
-            className="text-xs text-slate-500 hover:text-slate-800 transition-colors"
+            disabled={isSubmitting}
+            className="text-xs text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
           >
             Kembali ke <span className="text-blue-600 underline font-medium">Portal Siswa</span>
           </button>
