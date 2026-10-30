@@ -10,7 +10,15 @@ dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
+
+// Determine environment: in development within AI Studio, dev server must run on port 3000.
+// In production (Cloud Run), use process.env.PORT (defaults to 8080 or 3000).
+const isProduction =
+  process.env.NODE_ENV === 'production' ||
+  Boolean(process.env.K_SERVICE) ||
+  (process.env.NODE_ENV !== 'development' && fs.existsSync(path.resolve(__dirname, 'dist', 'index.html')));
+
+const PORT = isProduction ? (Number(process.env.PORT) || 8080) : 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -69,33 +77,69 @@ const ai = new GoogleGenAI({
   },
 });
 
+// Helper to sanitize secret values from accidental whitespace or surrounding quotes (e.g. from copy-pasting into Secrets UI)
+function sanitizeSecret(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  let cleaned = value.trim();
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"') && cleaned.length >= 2) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'") && cleaned.length >= 2)
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  return cleaned;
+}
+
+// Safe diagnostic endpoint to check environment readiness in production (NEVER outputs secret values)
+app.get('/api/teacher/auth-status', (_req, res) => {
+  const rawTeacherSecret = process.env.TEACHER_PASSWORD;
+  const rawGuruSecret = process.env.GURU_PASSWORD;
+  const isConfigured = Boolean((rawTeacherSecret && rawTeacherSecret.trim()) || (rawGuruSecret && rawGuruSecret.trim()));
+  const activeSource = (rawTeacherSecret && rawTeacherSecret.trim()) ? 'TEACHER_PASSWORD' : ((rawGuruSecret && rawGuruSecret.trim()) ? 'GURU_PASSWORD' : 'NONE');
+
+  res.json({
+    success: true,
+    authConfigured: isConfigured,
+    secretSource: activeSource,
+    hasLength: isConfigured ? sanitizeSecret(rawTeacherSecret || rawGuruSecret).length > 0 : false,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Teacher Authentication Endpoint (Server-side verification)
 app.post('/api/teacher/login', (req, res) => {
-  const { teacherName, password } = req.body;
-  const configuredPassword = process.env.TEACHER_PASSWORD || process.env.GURU_PASSWORD;
+  const { teacherName } = req.body || {};
+  const submittedPassword = req.body?.password ?? req.body?.accessCode ?? req.body?.code;
 
-  if (!configuredPassword) {
-    return res.status(500).json({
+  const rawConfiguredPassword = process.env.TEACHER_PASSWORD || process.env.GURU_PASSWORD;
+  const configuredPassword = sanitizeSecret(rawConfiguredPassword);
+
+  if (!rawConfiguredPassword || !configuredPassword) {
+    return res.status(503).json({
       success: false,
-      message: 'Variabel lingkungan TEACHER_PASSWORD belum dikonfigurasi di server.',
+      message: 'Server belum mendeteksi Secret TEACHER_PASSWORD. Pastikan secret telah ditambahkan di menu Secrets Google AI Studio.',
     });
   }
 
-  if (!teacherName || typeof teacherName !== 'string' || !teacherName.trim()) {
+  // Teacher display name defaults gracefully to current session teacher or Pak Aslam
+  const resolvedTeacherName = (typeof teacherName === 'string' && teacherName.trim())
+    ? teacherName.trim()
+    : (currentSession.teacherName || 'Pak Aslam, S.Pd.');
+
+  if (!submittedPassword || typeof submittedPassword !== 'string' || !submittedPassword.trim()) {
     return res.status(400).json({
       success: false,
-      message: 'Silakan masukkan nama guru pengampu.',
+      message: 'Silakan masukkan kode akses pengajar.',
     });
   }
 
-  if (!password || typeof password !== 'string') {
-    return res.status(400).json({
-      success: false,
-      message: 'Silakan masukkan kode akses guru.',
-    });
-  }
+  const cleanSubmitted = sanitizeSecret(submittedPassword);
 
-  if (password.trim() !== configuredPassword.trim()) {
+  // Strict match against cleaned or raw trimmed environment variable
+  const isMatch = (cleanSubmitted === configuredPassword) ||
+                  (String(submittedPassword).trim() === String(rawConfiguredPassword).trim());
+
+  if (!isMatch) {
     return res.status(401).json({
       success: false,
       message: 'Kode akses tidak valid. Silakan periksa kembali kode akses pengajar.',
@@ -105,7 +149,7 @@ app.post('/api/teacher/login', (req, res) => {
   return res.json({
     success: true,
     message: 'Autentikasi pengajar berhasil.',
-    teacherName: teacherName.trim(),
+    teacherName: resolvedTeacherName,
   });
 });
 
@@ -385,7 +429,6 @@ app.get(['/health', '/api/health'], (_req, res) => {
 async function startServer() {
   const distDir = path.resolve(__dirname, 'dist');
   const distIndexHtml = path.resolve(distDir, 'index.html');
-  const isProduction = process.env.NODE_ENV === 'production' || fs.existsSync(distIndexHtml);
 
   if (!isProduction) {
     const { createServer } = await import('vite');

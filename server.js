@@ -2,6 +2,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import { GoogleGenAI } from "@google/genai";
 
@@ -256,7 +257,8 @@ var EXAM_QUESTIONS = [
 dotenv.config();
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
 var app = express();
-var PORT = process.env.PORT || 3e3;
+var isProduction = process.env.NODE_ENV === "production" || Boolean(process.env.K_SERVICE) || process.env.NODE_ENV !== "development" && fs.existsSync(path.resolve(__dirname, "dist", "index.html"));
+var PORT = isProduction ? Number(process.env.PORT) || 8080 : 3e3;
 app.use(express.json({ limit: "10mb" }));
 var examQuestions = [...EXAM_QUESTIONS];
 var currentSession = {
@@ -277,6 +279,59 @@ var ai = new GoogleGenAI({
       "User-Agent": "aistudio-build"
     }
   }
+});
+function sanitizeSecret(value) {
+  if (typeof value !== "string") return "";
+  let cleaned = value.trim();
+  if (cleaned.startsWith('"') && cleaned.endsWith('"') && cleaned.length >= 2 || cleaned.startsWith("'") && cleaned.endsWith("'") && cleaned.length >= 2) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  return cleaned;
+}
+app.get("/api/teacher/auth-status", (_req, res) => {
+  const rawTeacherSecret = process.env.TEACHER_PASSWORD;
+  const rawGuruSecret = process.env.GURU_PASSWORD;
+  const isConfigured = Boolean(rawTeacherSecret && rawTeacherSecret.trim() || rawGuruSecret && rawGuruSecret.trim());
+  const activeSource = rawTeacherSecret && rawTeacherSecret.trim() ? "TEACHER_PASSWORD" : rawGuruSecret && rawGuruSecret.trim() ? "GURU_PASSWORD" : "NONE";
+  res.json({
+    success: true,
+    authConfigured: isConfigured,
+    secretSource: activeSource,
+    hasLength: isConfigured ? sanitizeSecret(rawTeacherSecret || rawGuruSecret).length > 0 : false,
+    timestamp: (/* @__PURE__ */ new Date()).toISOString()
+  });
+});
+app.post("/api/teacher/login", (req, res) => {
+  const { teacherName } = req.body || {};
+  const submittedPassword = req.body?.password ?? req.body?.accessCode ?? req.body?.code;
+  const rawConfiguredPassword = process.env.TEACHER_PASSWORD || process.env.GURU_PASSWORD;
+  const configuredPassword = sanitizeSecret(rawConfiguredPassword);
+  if (!rawConfiguredPassword || !configuredPassword) {
+    return res.status(503).json({
+      success: false,
+      message: "Server belum mendeteksi Secret TEACHER_PASSWORD. Pastikan secret telah ditambahkan di menu Secrets Google AI Studio."
+    });
+  }
+  const resolvedTeacherName = typeof teacherName === "string" && teacherName.trim() ? teacherName.trim() : currentSession.teacherName || "Pak Aslam, S.Pd.";
+  if (!submittedPassword || typeof submittedPassword !== "string" || !submittedPassword.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "Silakan masukkan kode akses pengajar."
+    });
+  }
+  const cleanSubmitted = sanitizeSecret(submittedPassword);
+  const isMatch = cleanSubmitted === configuredPassword || String(submittedPassword).trim() === String(rawConfiguredPassword).trim();
+  if (!isMatch) {
+    return res.status(401).json({
+      success: false,
+      message: "Kode akses tidak valid. Silakan periksa kembali kode akses pengajar."
+    });
+  }
+  return res.json({
+    success: true,
+    message: "Autentikasi pengajar berhasil.",
+    teacherName: resolvedTeacherName
+  });
 });
 app.get("/api/exam/session", (_req, res) => {
   res.json({ success: true, session: currentSession });
@@ -505,8 +560,13 @@ Gunakan bahasa yang santun, jelas, dan memotivasi seorang pendidik.`;
     });
   }
 });
+app.get(["/health", "/api/health"], (_req, res) => {
+  res.status(200).json({ status: "healthy", uptime: process.uptime() });
+});
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
+  const distDir = path.resolve(__dirname, "dist");
+  const distIndexHtml = path.resolve(distDir, "index.html");
+  if (!isProduction) {
     const { createServer } = await import("vite");
     const vite = await createServer({
       server: { middlewareMode: true },
@@ -514,13 +574,27 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.resolve(__dirname, "dist")));
+    app.use(express.static(distDir));
+    app.all("/api/*", (_req, res) => {
+      res.status(404).json({ success: false, message: "Endpoint API tidak ditemukan." });
+    });
     app.get("*", (_req, res) => {
-      res.sendFile(path.resolve(__dirname, "dist/index.html"));
+      if (fs.existsSync(distIndexHtml)) {
+        res.sendFile(distIndexHtml);
+      } else {
+        res.status(500).send("Application build not found. Please run npm run build.");
+      }
     });
   }
-  app.listen(Number(PORT), "0.0.0.0", () => {
-    console.log(`EduTest Server running on http://0.0.0.0:${PORT}`);
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`EduTest Server running on http://0.0.0.0:${PORT} (Production: ${isProduction})`);
+  });
+  process.on("SIGTERM", () => {
+    console.log("SIGTERM signal received: closing HTTP server gracefully");
+    server.close(() => {
+      console.log("HTTP server closed");
+      process.exit(0);
+    });
   });
 }
 startServer();
