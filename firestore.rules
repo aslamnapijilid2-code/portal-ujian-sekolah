@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isTeacher() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['teacher', 'admin'] &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.active == true;
+    }
+
+    // 1. Koleksi Pengguna (users/{userId}):
+    // - Pemilik akun atau Guru/Admin dapat membaca data profilnya
+    // - Pemilik akun dapat memperbarui profil miliknya sendiri, namun role tidak dapat diubah mandiri
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isTeacher();
+      allow write: if isOwner(userId) && request.resource.data.role == resource.data.role;
+    }
+
+    // 2. Koleksi Bank Soal Ujian (questions/{questionId}):
+    // - Read, Create, Update, Delete: HANYA Guru/Admin terautentikasi dengan status aktif
+    // - Tidak dibuka akses publik guna melindungi kerahasiaan butir soal dan kunci jawaban
+    match /questions/{questionId} {
+      allow read: if isTeacher();
+      allow write: if isTeacher();
+    }
+
+    // 3. Koleksi Metadata Sistem (_metadata/{docId}):
+    // - HANYA Guru/Admin terautentikasi yang dapat membaca dan memperbarui status inisialisasi
+    match /_metadata/{docId} {
+      allow read: if isTeacher();
+      allow write: if isTeacher();
+    }
+
+    // Default deny untuk seluruh path dokumen lainnya
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

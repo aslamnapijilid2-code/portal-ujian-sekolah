@@ -11,6 +11,7 @@ import {
   CheckSquare,
   CircleDot,
   Check,
+  Loader2,
 } from 'lucide-react';
 import { QuestionData, QuestionOption, QuestionType, TrueFalseStatement } from '../data/questions';
 
@@ -18,7 +19,7 @@ interface QuestionEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
   questionToEdit: QuestionData | null;
-  onSave: (savedQuestion: QuestionData) => void;
+  onSave: (savedQuestion: QuestionData) => Promise<void> | void;
   nextNumber: number;
 }
 
@@ -79,6 +80,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
   const [finalResultText, setFinalResultText] = useState('');
 
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Populate fields when editing or reset when adding
   useEffect(() => {
@@ -249,7 +251,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
     setTfStatements((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!questionPrompt.trim()) {
@@ -351,8 +353,17 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
       },
     };
 
-    onSave(savedData);
-    onClose();
+    setIsSubmitting(true);
+    setErrorMsg('');
+    try {
+      await onSave(savedData);
+      onClose();
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setErrorMsg(e.message || 'Gagal menyimpan butir soal ke Cloud Firestore.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1082,10 +1093,20 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow transition-all flex items-center gap-1.5 cursor-pointer"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow transition-all flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>{isEditing ? 'Simpan Perubahan Soal' : 'Tambahkan ke Bank Soal'}</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Menyimpan ke Firestore...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{isEditing ? 'Simpan Perubahan Soal' : 'Tambahkan ke Bank Soal'}</span>
+                </>
+              )}
             </button>
           </div>
         </form>

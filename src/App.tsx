@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   BookOpen,
   ShieldCheck,
@@ -27,6 +27,13 @@ import { TeacherDashboard } from './components/TeacherDashboard';
 
 import { EXAM_QUESTIONS, QuestionData, checkIsAnswerCorrect } from './data/questions';
 import { StudentProfile, StudentSubmission, ExamSessionConfig } from './types/exam';
+import { isFirebaseConfigured } from './lib/firebase';
+import {
+  getQuestionsFromFirestore,
+  syncAllQuestionsToFirestore,
+  seedInitialQuestionsIfNeeded,
+} from './services/questionService';
+import { subscribeToTeacherAuth } from './services/authService';
 
 const STORAGE_SUBMISSIONS_KEY = 'edutest_submissions_cache';
 const STORAGE_SESSION_KEY = 'edutest_session_cache';
@@ -117,12 +124,35 @@ export default function App() {
           }
         }
 
-        const qRes = await fetch('/api/exam/questions');
-        if (qRes.ok) {
-          const qData = await qRes.json();
-          if (qData.success && qData.questions && qData.questions.length > 0) {
-            setQuestions(qData.questions);
-            localStorage.setItem(STORAGE_QUESTIONS_KEY, JSON.stringify(qData.questions));
+        // Prioritas 1: Ambil butir soal langsung dari Cloud Firestore agar data permanen dan tidak hilang saat reload
+        let firestoreLoaded = false;
+        if (isFirebaseConfigured) {
+          try {
+            const fsQuestions = await getQuestionsFromFirestore();
+            if (fsQuestions && fsQuestions.length > 0) {
+              setQuestions(fsQuestions);
+              localStorage.setItem(STORAGE_QUESTIONS_KEY, JSON.stringify(fsQuestions));
+              firestoreLoaded = true;
+              fetch('/api/exam/questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ questions: fsQuestions }),
+              }).catch(() => {});
+            }
+          } catch (fsErr) {
+            console.warn('Gagal membaca soal langsung dari Firestore:', fsErr);
+          }
+        }
+
+        // Prioritas 2 (Fallback): Jika Firestore belum terisi atau offline, gunakan server Express
+        if (!firestoreLoaded) {
+          const qRes = await fetch('/api/exam/questions');
+          if (qRes.ok) {
+            const qData = await qRes.json();
+            if (qData.success && Array.isArray(qData.questions) && qData.questions.length > 0) {
+              setQuestions(qData.questions);
+              localStorage.setItem(STORAGE_QUESTIONS_KEY, JSON.stringify(qData.questions));
+            }
           }
         }
       } catch (e) {
@@ -131,6 +161,48 @@ export default function App() {
     }
     loadData();
   }, []);
+
+  // Mendengarkan status autentikasi guru via Firebase Auth
+  // Jika terautentikasi sebagai guru, sinkronkan bank soal resmi dari Cloud Firestore
+  useEffect(() => {
+    const unsubscribe = subscribeToTeacherAuth(async (user) => {
+      if (user && isFirebaseConfigured) {
+        try {
+          const fsQuestions = await getQuestionsFromFirestore();
+          if (fsQuestions && fsQuestions.length > 0) {
+            setQuestions(fsQuestions);
+            localStorage.setItem(STORAGE_QUESTIONS_KEY, JSON.stringify(fsQuestions));
+            await fetch('/api/exam/questions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ questions: fsQuestions }),
+            });
+          }
+        } catch (e) {
+          console.warn('Sinkronisasi bank soal Firestore sesi guru:', e);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Butir soal yang disajikan ke ruang ujian siswa disanitasi agar kunci jawaban & pembahasan tidak dapat diakses sebelum ujian selesai
+  const questionsForStudentRoom = useMemo(() => {
+    return questions.map((q) => {
+      const { correctAnswer: _discardKey, explanation: _discardExpl, ...safeQuestion } = q;
+      const sanitizedStatements = q.statements?.map((s) => ({
+        id: s.id,
+        text: s.text,
+        correctAnswer: 'Benar' as const,
+      }));
+      return {
+        ...safeQuestion,
+        correctAnswer: '',
+        statements: sanitizedStatements,
+      } as QuestionData;
+    });
+  }, [questions]);
 
   // Sync submissions to local cache whenever they change
   useEffect(() => {
@@ -200,13 +272,20 @@ export default function App() {
   };
 
   // Handler: Teacher updates questions (Add, Edit, Delete)
-  const handleUpdateQuestions = async (newQuestions: QuestionData[]) => {
+  const handleUpdateQuestions = async (newQuestions: QuestionData[]): Promise<void> => {
+    // 1. Simpan permanen ke Cloud Firestore terlebih dahulu dan tunggu konfirmasi keberhasilan
+    if (isFirebaseConfigured) {
+      await syncAllQuestionsToFirestore(newQuestions);
+    }
+
+    // 2. Perbarui state lokal dan cache hanya setelah Firestore mengonfirmasi penyimpanan berhasil
     setQuestions(newQuestions);
     try {
       localStorage.setItem(STORAGE_QUESTIONS_KEY, JSON.stringify(newQuestions));
     } catch (e) {
       console.warn(e);
     }
+
     try {
       await fetch('/api/exam/questions', {
         method: 'POST',
@@ -226,6 +305,16 @@ export default function App() {
     } catch (e) {
       console.warn(e);
     }
+
+    // Reset ke Cloud Firestore jika terhubung
+    if (isFirebaseConfigured) {
+      try {
+        await seedInitialQuestionsIfNeeded(true);
+      } catch (err) {
+        console.error('Gagal me-reset soal ke Cloud Firestore:', err);
+      }
+    }
+
     try {
       await fetch('/api/exam/questions/reset', { method: 'POST' });
     } catch (e) {
@@ -234,10 +323,28 @@ export default function App() {
   };
 
   // Handler: Teacher successfully logs in
-  const handleTeacherLoginSuccess = (name: string) => {
+  const handleTeacherLoginSuccess = async (name: string) => {
     setTeacherName(name);
     setActiveRole('teacher');
     setCurrentView('teacher-dashboard');
+
+    if (isFirebaseConfigured) {
+      try {
+        const fsQuestions = await getQuestionsFromFirestore();
+        if (fsQuestions && fsQuestions.length > 0) {
+          setQuestions(fsQuestions);
+          localStorage.setItem(STORAGE_QUESTIONS_KEY, JSON.stringify(fsQuestions));
+          // Sinkronkan ke server express untuk peserta ujian
+          await fetch('/api/exam/questions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ questions: fsQuestions }),
+          });
+        }
+      } catch (err) {
+        console.warn('Sinkronisasi butir soal Firestore saat guru login:', err);
+      }
+    }
   };
 
   // Handler: Teacher creates a new session
@@ -520,7 +627,7 @@ export default function App() {
           <StudentExamRoom
             profile={studentProfile}
             sessionConfig={sessionConfig}
-            questions={questions}
+            questions={questionsForStudentRoom}
             onSubmitExam={handleSubmitExam}
           />
         )}

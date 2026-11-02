@@ -22,8 +22,24 @@ const PORT = isProduction ? (Number(process.env.PORT) || 8080) : 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
-// Dynamic questions list
-let examQuestions: QuestionData[] = [...EXAM_QUESTIONS];
+// Dynamic questions list with disk persistence fallback
+const QUESTIONS_FILE_PATH = path.resolve(__dirname, 'server_questions.json');
+
+let examQuestions: QuestionData[] = (() => {
+  try {
+    if (fs.existsSync(QUESTIONS_FILE_PATH)) {
+      const content = fs.readFileSync(QUESTIONS_FILE_PATH, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        console.log(`Server memuat ${parsed.length} butir soal dari persistent storage server_questions.json`);
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Gagal membaca server_questions.json:', e);
+  }
+  return [...EXAM_QUESTIONS];
+})();
 
 // In-memory persistent store for exam sessions and submissions
 interface StudentSubmission {
@@ -194,9 +210,39 @@ app.get('/api/exam/submissions', (req, res) => {
   res.json({ success: true, submissions });
 });
 
-// GET all exam questions
-app.get('/api/exam/questions', (_req, res) => {
-  res.json({ success: true, questions: examQuestions });
+// GET all exam questions (dilindungi status sesi aktif & sanitasi kunci untuk siswa)
+app.get('/api/exam/questions', (req, res) => {
+  const isStudentRequest = req.query.role === 'student' || req.query.for === 'student';
+
+  // Periksa apakah sesi ujian diizinkan/aktif jika diakses oleh siswa
+  if (isStudentRequest && !currentSession.isActive) {
+    return res.status(403).json({
+      success: false,
+      message: 'Sesi ujian sedang tidak aktif atau telah ditutup oleh guru pengampu.',
+      questions: [],
+    });
+  }
+
+  // Jika diminta oleh siswa, sembunyikan kunci jawaban resmi dan pembahasan sebelum ujian selesai
+  if (isStudentRequest) {
+    const sanitizedQuestions = examQuestions.map((q) => {
+      const { correctAnswer: _discardKey, explanation: _discardExpl, ...safeQuestion } = q;
+      // Sanitasi kunci pernyataan jika ada
+      const sanitizedStatements = q.statements?.map((s) => ({
+        id: s.id,
+        text: s.text,
+        correctAnswer: 'Benar' as const,
+      }));
+      return {
+        ...safeQuestion,
+        correctAnswer: '',
+        statements: sanitizedStatements,
+      };
+    });
+    return res.json({ success: true, questions: sanitizedQuestions, sessionActive: currentSession.isActive });
+  }
+
+  res.json({ success: true, questions: examQuestions, sessionActive: currentSession.isActive });
 });
 
 // UPDATE / ADD / DELETE exam questions
@@ -214,12 +260,26 @@ app.post('/api/exam/questions', (req, res) => {
     points: Math.round((100 / questions.length) * 100) / 100,
   }));
 
+  // Simpan secara permanen ke file server_questions.json di server
+  try {
+    fs.writeFileSync(QUESTIONS_FILE_PATH, JSON.stringify(examQuestions, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Gagal menyimpan ke server_questions.json:', err);
+  }
+
   res.json({ success: true, questions: examQuestions });
 });
 
 // RESET exam questions to default
 app.post('/api/exam/questions/reset', (_req, res) => {
   examQuestions = [...EXAM_QUESTIONS];
+  try {
+    if (fs.existsSync(QUESTIONS_FILE_PATH)) {
+      fs.unlinkSync(QUESTIONS_FILE_PATH);
+    }
+  } catch (err) {
+    console.warn('Gagal menghapus server_questions.json:', err);
+  }
   res.json({ success: true, questions: examQuestions, message: 'Bank soal telah dikembalikan ke format default.' });
 });
 

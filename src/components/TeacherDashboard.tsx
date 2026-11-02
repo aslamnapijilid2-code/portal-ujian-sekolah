@@ -25,7 +25,9 @@ import {
   Edit,
   Trash2,
   Plus,
+  Flame,
 } from 'lucide-react';
+import { auth, isFirebaseConfigured } from '../lib/firebase';
 import { EXAM_QUESTIONS, QuestionData, checkIsAnswerCorrect } from '../data/questions';
 import { StudentSubmission, ExamSessionConfig, QuestionStat } from '../types/exam';
 import { QuestionEditorModal } from './QuestionEditorModal';
@@ -39,7 +41,7 @@ interface TeacherDashboardProps {
   questions?: QuestionData[];
   onNewSession: (config: Partial<ExamSessionConfig>, resetSubmissions: boolean) => void;
   onUpdateDuration?: (minutes: number) => void;
-  onUpdateQuestions?: (newQuestions: QuestionData[]) => void;
+  onUpdateQuestions?: (newQuestions: QuestionData[]) => Promise<void> | void;
   onResetQuestions?: () => void;
   onSeedSample: () => void;
   onClearSubmissions: () => void;
@@ -215,8 +217,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     document.body.removeChild(link);
   };
 
-  // Question CRUD Handlers
-  const handleSaveQuestion = (savedQ: QuestionData) => {
+  // Question CRUD Handlers (Memastikan konfirmasi Cloud Firestore dengan await)
+  const handleSaveQuestion = async (savedQ: QuestionData) => {
     let updated: QuestionData[];
     const exists = activeQuestions.some((q) => q.id === savedQ.id);
     if (exists) {
@@ -225,14 +227,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
       updated = [...activeQuestions, savedQ];
     }
     updated = updated.map((q, idx) => ({ ...q, number: idx + 1 }));
+
     if (onUpdateQuestions) {
-      onUpdateQuestions(updated);
+      // Tunggu konfirmasi keberhasilan penulisan ke Firestore sebelum update notifikasi
+      await onUpdateQuestions(updated);
     }
-    setDurationNotice(`Soal nomor ${savedQ.number} berhasil ${exists ? 'diperbarui' : 'ditambahkan ke bank soal'}.`);
-    setTimeout(() => setDurationNotice(''), 4000);
+
+    setDurationNotice(
+      `Soal nomor ${savedQ.number} berhasil ${exists ? 'diperbarui' : 'ditambahkan'} dan tersimpan permanen di Cloud Firestore.`
+    );
+    setTimeout(() => setDurationNotice(''), 5000);
   };
 
-  const handleDeleteQuestion = (qId: number, qNum: number) => {
+  const handleDeleteQuestion = async (qId: number, qNum: number) => {
     if (activeQuestions.length <= 1) {
       alert('Ujian harus memiliki minimal 1 butir soal. Tidak dapat menghapus butir terakhir.');
       return;
@@ -242,10 +249,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         .filter((q) => q.id !== qId)
         .map((q, idx) => ({ ...q, number: idx + 1 }));
       if (onUpdateQuestions) {
-        onUpdateQuestions(updated);
+        await onUpdateQuestions(updated);
       }
-      setDurationNotice(`Soal nomor ${qNum} berhasil dihapus.`);
-      setTimeout(() => setDurationNotice(''), 4000);
+      setDurationNotice(`Soal nomor ${qNum} berhasil dihapus dari Cloud Firestore.`);
+      setTimeout(() => setDurationNotice(''), 5000);
     }
   };
 
@@ -721,15 +728,34 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           {/* Header Card */}
           <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 uppercase tracking-wider">
-                <FileText className="w-4 h-4" />
-                <span>Bank Soal & Manajemen Soal Ujian</span>
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wider">
+                <span className="flex items-center gap-1.5 text-indigo-600">
+                  <FileText className="w-4 h-4" />
+                  <span>Bank Soal & Manajemen Soal Ujian</span>
+                </span>
+                <span>·</span>
+                {auth?.currentUser ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200" title={`Terautentikasi sebagai ${auth.currentUser.email}`}>
+                    <Flame className="w-3 h-3 text-amber-500" />
+                    <span>Firestore Aktif ({auth.currentUser.email})</span>
+                  </span>
+                ) : isFirebaseConfigured ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200" title="Untuk menyimpan perubahan langsung ke Cloud Firestore, pastikan Anda login dengan Akun Firebase (Email & Kata Sandi)">
+                    <Flame className="w-3 h-3 text-blue-500" />
+                    <span>Firestore Terhubung</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                    <AlertCircle className="w-3 h-3 text-amber-600" />
+                    <span>Penyimpanan Lokal Server</span>
+                  </span>
+                )}
               </div>
               <h2 className="text-lg font-black text-slate-900 tracking-tight">
                 Kelola Butir Soal Ujian ({activeQuestions.length} Soal Aktif)
               </h2>
               <p className="text-xs text-slate-500 max-w-2xl leading-relaxed">
-                Anda dapat menambah butir soal baru, mengedit teks soal, opsi jawaban (A, B, C, D), kunci jawaban resmi, gambar, dan pembahasan, atau menghapus butir soal. Skor maksimal siswa otomatis terdistribusi dengan total 100 poin.
+                Setiap perubahan soal otomatis tersimpan permanen di Firebase Cloud Firestore dan tidak akan ter-reset saat server mengalami restart atau cold start.
               </p>
             </div>
 

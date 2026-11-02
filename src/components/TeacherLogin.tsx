@@ -1,5 +1,19 @@
 import React, { useState } from 'react';
-import { ShieldCheck, KeyRound, User, AlertCircle, ArrowRight, Eye, EyeOff, Lock, Loader2 } from 'lucide-react';
+import {
+  ShieldCheck,
+  KeyRound,
+  User,
+  AlertCircle,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Lock,
+  Loader2,
+  Mail,
+  Flame,
+} from 'lucide-react';
+import { isFirebaseConfigured } from '../lib/firebase';
+import { loginTeacherWithFirebase } from '../services/authService';
 
 interface TeacherLoginProps {
   onLoginSuccess: (teacherName: string) => void;
@@ -10,49 +24,78 @@ export const TeacherLogin: React.FC<TeacherLoginProps> = ({
   onLoginSuccess,
   onSwitchToStudent,
 }) => {
+  // Login method: 'firebase' (Email/Password) or 'server_code' (Kode Akses)
+  const [loginMethod, setLoginMethod] = useState<'firebase' | 'server_code'>(
+    isFirebaseConfigured ? 'firebase' : 'server_code'
+  );
+
+  // Firebase Auth State
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Legacy / Server Code State
   const [teacherName, setTeacherName] = useState('Pak Aslam, S.Pd.');
   const [accessCode, setAccessCode] = useState('');
+
   const [showCode, setShowCode] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!teacherName.trim()) {
-      setErrorMsg('Silakan masukkan nama guru pengampu.');
-      return;
-    }
-
-    if (!accessCode.trim()) {
-      setErrorMsg('Silakan masukkan kode akses pengajar.');
-      return;
-    }
-
     setIsSubmitting(true);
     setErrorMsg('');
 
     try {
-      const response = await fetch('/api/teacher/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          teacherName: teacherName.trim(),
-          password: accessCode.trim(),
-        }),
-      });
+      if (loginMethod === 'firebase') {
+        if (!email.trim() || !password.trim()) {
+          setErrorMsg('Silakan masukkan email dan kata sandi akun guru.');
+          setIsSubmitting(false);
+          return;
+        }
 
-      const data = await response.json().catch(() => ({}));
-
-      if (response.ok && data.success) {
-        onLoginSuccess(data.teacherName || teacherName.trim());
+        const result = await loginTeacherWithFirebase(email, password);
+        onLoginSuccess(result.displayName || 'Pak Aslam, S.Pd.');
       } else {
-        setErrorMsg(data.message || 'Kode akses tidak valid. Silakan periksa kembali kode akses pengajar.');
+        // Mode Kode Akses Server
+        if (!teacherName.trim()) {
+          setErrorMsg('Silakan masukkan nama guru pengampu.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (!accessCode.trim()) {
+          setErrorMsg('Silakan masukkan kode akses pengajar.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        const response = await fetch('/api/teacher/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            teacherName: teacherName.trim(),
+            password: accessCode.trim(),
+          }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.success) {
+          onLoginSuccess(data.teacherName || teacherName.trim());
+        } else {
+          setErrorMsg(data.message || 'Kode akses tidak valid. Silakan periksa kembali kode akses pengajar.');
+        }
       }
-    } catch {
-      setErrorMsg('Gagal menghubungi server verifikasi. Pastikan koneksi server aktif.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg('Gagal melakukan autentikasi pengajar. Silakan coba kembali.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -69,8 +112,42 @@ export const TeacherLogin: React.FC<TeacherLoginProps> = ({
             Autentikasi Dasbor Guru
           </h1>
           <p className="text-xs text-slate-500">
-            Masuk dengan nama pendidik dan kode akses resmi pengajar.
+            Masuk dengan akun terverifikasi untuk mengelola butir soal dan rekap ujian.
           </p>
+        </div>
+
+        {/* Tab Pemilihan Metode Login */}
+        <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMethod('firebase');
+              setErrorMsg('');
+            }}
+            className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              loginMethod === 'firebase'
+                ? 'bg-white text-blue-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Flame className="w-3.5 h-3.5 text-amber-500" />
+            <span>Akun Firebase</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMethod('server_code');
+              setErrorMsg('');
+            }}
+            className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              loginMethod === 'server_code'
+                ? 'bg-white text-blue-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <KeyRound className="w-3.5 h-3.5 text-blue-600" />
+            <span>Kode Akses Server</span>
+          </button>
         </div>
 
         {errorMsg && (
@@ -83,54 +160,109 @@ export const TeacherLogin: React.FC<TeacherLoginProps> = ({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Nama Guru Pengampu <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                required
-                disabled={isSubmitting}
-                value={teacherName}
-                onChange={(e) => setTeacherName(e.target.value)}
-                placeholder="Contoh: Pak Aslam, S.Pd."
-                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors disabled:opacity-60"
-              />
-            </div>
-          </div>
+          {loginMethod === 'firebase' ? (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Email Akun Guru (Firebase Auth) <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    disabled={isSubmitting}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="nama.guru@sdn4sojolutara.sch.id"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors disabled:opacity-60"
+                  />
+                </div>
+              </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Kode Akses Rahasia <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type={showCode ? 'text' : 'password'}
-                required
-                disabled={isSubmitting}
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                placeholder="Masukkan kode akses pengajar"
-                className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors font-mono disabled:opacity-60"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCode(!showCode)}
-                disabled={isSubmitting}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                aria-label="Tampilkan atau sembunyikan kode"
-              >
-                {showCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1.5">
-              <Lock className="w-3 h-3 text-slate-400 shrink-0" />
-              Akses terbatas hanya untuk pendidik dan pengawas resmi.
-            </p>
-          </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Kata Sandi Akun <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showCode ? 'text' : 'password'}
+                    required
+                    disabled={isSubmitting}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Masukkan kata sandi Firebase"
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCode(!showCode)}
+                    disabled={isSubmitting}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    aria-label="Tampilkan atau sembunyikan kode"
+                  >
+                    {showCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1.5">
+                  <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+                  Role divalidasi melalui koleksi users/{'{uid}'} (role: "teacher", active: true).
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Nama Guru Pengampu <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    disabled={isSubmitting}
+                    value={teacherName}
+                    onChange={(e) => setTeacherName(e.target.value)}
+                    placeholder="Contoh: Pak Aslam, S.Pd."
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Kode Akses Rahasia <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showCode ? 'text' : 'password'}
+                    required
+                    disabled={isSubmitting}
+                    value={accessCode}
+                    onChange={(e) => setAccessCode(e.target.value)}
+                    placeholder="Masukkan kode akses pengajar"
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors font-mono disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCode(!showCode)}
+                    disabled={isSubmitting}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    aria-label="Tampilkan atau sembunyikan kode"
+                  >
+                    {showCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1.5">
+                  <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+                  Diverifikasi langsung oleh server melalui environment variable TEACHER_PASSWORD.
+                </p>
+              </div>
+            </>
+          )}
 
           <div className="pt-2">
             <button
