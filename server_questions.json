@@ -1,0 +1,720 @@
+[
+  {
+    "id": 1,
+    "number": 1,
+    "category": "Konversi Pecahan",
+    "topicTitle": "Mengubah Pecahan Biasa ke Pecahan Campuran",
+    "type": "single",
+    "imagePath": "/assets/aistudio/2_5761fc07.JPG",
+    "hasContextCard": false,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "",
+    "questionPrompt": "Ibu mempunyai cokelat sebanyak 17/6 batang. Ubahlah jumlah cokelat tersebut menjadi pecahan campuran!",
+    "options": [
+      {
+        "fractionDisplay": "2 3/6 batang",
+        "text": "2 3/6 batang",
+        "key": "A"
+      },
+      {
+        "text": "2 5/6 batang",
+        "key": "B",
+        "fractionDisplay": "2 5/6 batang"
+      },
+      {
+        "text": "3 1/6 batang",
+        "key": "C",
+        "fractionDisplay": "3 1/6 batang"
+      },
+      {
+        "key": "D",
+        "fractionDisplay": "3 5/6 batang",
+        "text": "3 5/6 batang"
+      }
+    ],
+    "correctAnswer": "B",
+    "points": 6.67,
+    "explanation": {
+      "steps": [
+        "Bagi pembilang (17) dengan penyebut (6): 17 : 6 = 2 dengan sisa 5.",
+        "Hasil bagi (2) menjadi bilangan bulat di depan.",
+        "Sisa pembagian (5) menjadi pembilang baru.",
+        "Penyebut pecahan tetap sama, yaitu 6."
+      ],
+      "finalResult": "17/6 = 2 5/6 batang (Pilihan B)",
+      "summary": "Membagi pembilang dengan penyebut untuk mencari bilangan bulat dan sisa."
+    }
+  },
+  {
+    "id": 1,
+    "number": 2,
+    "category": "Konversi Pecahan",
+    "topicTitle": "Mengubah Pecahan Biasa ke Pecahan Campuran",
+    "type": "single",
+    "imagePath": "/assets/aistudio/2_5761fc07.JPG",
+    "hasContextCard": false,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "",
+    "questionPrompt": "TES EDIT. Ibu mempunyai cokelat sebanyak 17/6 batang. Ubahlah jumlah cokelat tersebut menjadi pecahan campuran! TES EDIT.",
+    "options": [
+      {
+        "text": "2 3/6 batang",
+        "key": "A",
+        "fractionDisplay": "2 3/6 batang"
+      },
+      {
+        "text": "2 5/6 batang",
+        "key": "B",
+        "fractionDisplay": "2 5/6 batang"
+      },
+      {
+        "key": "C",
+        "fractionDisplay": "3 1/6 batang",
+        "text": "3 1/6 batang"
+      },
+      {
+        "key": "D",
+        "fractionDisplay": "3 5/6 batang",
+        "text": "3 5/6 batang"
+      }
+    ],
+    "correctAnswer": "B",
+    "points": 6.67,
+    "explanation": {
+      "finalResult": "17/6 = 2 5/6 batang (Pilihan B)",
+      "steps": [
+        "Bagi pembilang (17) dengan penyebut (6): 17 : 6 = 2 dengan sisa 5.",
+        "Hasil bagi (2) menjadi bilangan bulat di depan.",
+        "Sisa pembagian (5) menjadi pembilang baru.",
+        "Penyebut pecahan tetap sama, yaitu 6."
+      ],
+      "summary": "Membagi pembilang dengan penyebut untuk mencari bilangan bulat dan sisa."
+    }
+  },
+  {
+    "id": 2,
+    "number": 3,
+    "category": "Konversi Pecahan",
+    "topicTitle": "Mengubah Pecahan Campuran ke Pecahan Biasa",
+    "type": "single",
+    "imagePath": "/assets/aistudio/5_46dd3318.JPG",
+    "hasContextCard": false,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "",
+    "questionPrompt": "Adik memiliki cokelat sebanyak 2 5/6 batang. Ubahlah jumlah cokelat Adik menjadi pecahan biasa!",
+    "options": [
+      {
+        "fractionDisplay": "11/6 batang",
+        "key": "A",
+        "text": "11/6 batang"
+      },
+      {
+        "text": "13/6 batang",
+        "fractionDisplay": "13/6 batang",
+        "key": "B"
+      },
+      {
+        "text": "17/6 batang",
+        "key": "C",
+        "fractionDisplay": "17/6 batang"
+      },
+      {
+        "fractionDisplay": "19/6 batang",
+        "key": "D",
+        "text": "19/6 batang"
+      }
+    ],
+    "correctAnswer": "C",
+    "points": 6.67,
+    "explanation": {
+      "steps": [
+        "Kalikan bilangan bulat dengan penyebut: 2 × 6 = 12.",
+        "Jumlahkan hasil kali dengan pembilang: 12 + 5 = 17.",
+        "Penyebut tetap bernilai 6."
+      ],
+      "finalResult": "2 5/6 = 17/6 batang (Pilihan C)",
+      "summary": "Mengalikan bilangan bulat dengan penyebut, lalu menjumlahkan pembilang."
+    }
+  },
+  {
+    "id": 3,
+    "number": 4,
+    "category": "Operasi Penjumlahan Pecahan",
+    "topicTitle": "Penjumlahan Pecahan Campuran Berbeda Penyebut",
+    "type": "single",
+    "imagePath": "/assets/aistudio/4_7049ace6.JPG",
+    "hasContextCard": true,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "Ibu membeli 2 1/2 kg tepung terigu di toko A. Karena masih kurang, Ibu membeli lagi 1 3/4 kg tepung terigu di toko B.",
+    "pins": [
+      {
+        "value": "2 1/2 kg",
+        "label": "Nilai Utama 1"
+      },
+      {
+        "label": "Nilai Utama 2",
+        "value": "1 3/4 kg"
+      }
+    ],
+    "questionPrompt": "Berapa kilogram total tepung terigu yang dibeli Ibu?",
+    "options": [
+      {
+        "key": "A",
+        "text": "3 3/4 kg",
+        "fractionDisplay": "3 3/4 kg"
+      },
+      {
+        "key": "B",
+        "fractionDisplay": "4 kg",
+        "text": "4 kg"
+      },
+      {
+        "text": "4 1/4 kg",
+        "fractionDisplay": "4 1/4 kg",
+        "key": "C"
+      },
+      {
+        "fractionDisplay": "4 1/2 kg",
+        "text": "4 1/2 kg",
+        "key": "D"
+      }
+    ],
+    "correctAnswer": "C",
+    "points": 6.67,
+    "explanation": {
+      "steps": [
+        "Total = 2 1/2 + 1 3/4.",
+        "Samakan penyebut: 1/2 diubah menjadi 2/4, sehingga 2 1/2 = 2 2/4.",
+        "Jumlahkan bilangan bulat: 2 + 1 = 3.",
+        "Jumlahkan pecahan: 2/4 + 3/4 = 5/4 = 1 1/4.",
+        "Gabungkan: 3 + 1 1/4 = 4 1/4 kg."
+      ],
+      "summary": "Menyamakan penyebut kedua pecahan (KPK dari 2 dan 4 adalah 4) lalu menjumlahkan.",
+      "finalResult": "Total tepung = 4 1/4 kg (Pilihan C)"
+    }
+  },
+  {
+    "id": 4,
+    "number": 5,
+    "category": "Operasi Pengurangan Pecahan",
+    "topicTitle": "Pengurangan Pecahan Campuran dengan Teknik Peminjaman",
+    "type": "single",
+    "imagePath": "/assets/aistudio/1_fb7d113c.JPG",
+    "hasContextCard": true,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "Ibu memiliki persediaan 5 1/2 kg tepung terigu. Sebanyak 2 3/4 kg digunakan untuk membuat adonan kue pastel.",
+    "pins": [
+      {
+        "label": "Nilai Utama 1",
+        "value": "5 1/2 kg"
+      },
+      {
+        "value": "2 3/4 kg",
+        "label": "Nilai Utama 2"
+      }
+    ],
+    "questionPrompt": "Berapa kilogram sisa tepung terigu persediaan Ibu?",
+    "options": [
+      {
+        "key": "A",
+        "fractionDisplay": "2 1/4 kg",
+        "text": "2 1/4 kg"
+      },
+      {
+        "key": "B",
+        "fractionDisplay": "2 1/2 kg",
+        "text": "2 1/2 kg"
+      },
+      {
+        "fractionDisplay": "2 3/4 kg",
+        "text": "2 3/4 kg",
+        "key": "C"
+      },
+      {
+        "key": "D",
+        "text": "3 kg",
+        "fractionDisplay": "3 kg"
+      }
+    ],
+    "correctAnswer": "C",
+    "points": 6.67,
+    "explanation": {
+      "summary": "Menyamakan penyebut menjadi 4, meminjam 1 dari bilangan bulat 5, lalu mengurangkan.",
+      "steps": [
+        "Sisa persediaan = 5 1/2 - 2 3/4.",
+        "Samakan penyebut: 5 1/2 = 5 2/4.",
+        "Karena 2/4 lebih kecil dari 3/4, pinjam 1 dari 5: 5 2/4 = 4 + 4/4 + 2/4 = 4 6/4.",
+        "Kurangkan: (4 - 2) + (6/4 - 3/4) = 2 + 3/4 = 2 3/4 kg."
+      ],
+      "finalResult": "Sisa tepung = 2 3/4 kg (Pilihan C)"
+    }
+  },
+  {
+    "id": 5,
+    "number": 6,
+    "category": "Operasi Perkalian Pecahan",
+    "topicTitle": "Perkalian Pecahan Campuran dengan Pecahan Biasa",
+    "type": "single",
+    "imagePath": "/assets/aistudio/6_c12d4f7b.JPG",
+    "hasContextCard": true,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "Seorang petani memanen 6 2/5 ton jagung. Sebanyak 5/8 bagian dari hasil panen tersebut akan dijual ke pasar, sedangkan sisanya disimpan.",
+    "pins": [
+      {
+        "value": "6 2/5 ton",
+        "label": "Nilai Utama 1"
+      },
+      {
+        "label": "Nilai Utama 2",
+        "value": "5/8 bagian"
+      }
+    ],
+    "questionPrompt": "Berapa ton jagung yang dijual ke pasar?",
+    "options": [
+      {
+        "fractionDisplay": "3 ton",
+        "key": "A",
+        "text": "3 ton"
+      },
+      {
+        "fractionDisplay": "4 ton",
+        "key": "B",
+        "text": "4 ton"
+      },
+      {
+        "fractionDisplay": "4 1/2 ton",
+        "text": "4 1/2 ton",
+        "key": "C"
+      },
+      {
+        "text": "5 ton",
+        "key": "D",
+        "fractionDisplay": "5 ton"
+      }
+    ],
+    "correctAnswer": "B",
+    "points": 6.67,
+    "explanation": {
+      "finalResult": "Jagung dijual = 4 ton (Pilihan B)",
+      "summary": "Mengubah pecahan campuran menjadi pecahan biasa, kemudian mengalikan pecahan.",
+      "steps": [
+        "Jagung dijual = 6 2/5 × 5/8.",
+        "Ubah 6 2/5 menjadi pecahan biasa: (6 × 5 + 2)/5 = 32/5.",
+        "Kalikan kedua pecahan: (32/5) × (5/8).",
+        "Sederhanakan pembilang dan penyebut: angka 5 saling mencoret, sehingga tersisa 32/8 = 4."
+      ]
+    }
+  },
+  {
+    "id": 6,
+    "number": 7,
+    "category": "Operasi Pembagian Pecahan",
+    "topicTitle": "Pembagian Pecahan Campuran dengan Pecahan Biasa",
+    "type": "single",
+    "imagePath": "/assets/aistudio/3_84172664.JPG",
+    "hasContextCard": true,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "Bu Lani memiliki pita hias sepanjang 7 1/2 meter. Pita tersebut dipotong-potong menjadi beberapa bagian sama panjang, masing-masing 3/4 meter untuk hiasan kado.",
+    "pins": [
+      {
+        "label": "Nilai Utama 1",
+        "value": "7 1/2 meter"
+      },
+      {
+        "value": "3/4 meter per potong",
+        "label": "Nilai Utama 2"
+      }
+    ],
+    "questionPrompt": "Berapa banyak potongan pita yang diperoleh Bu Lani?",
+    "options": [
+      {
+        "key": "A",
+        "text": "8 potongan",
+        "fractionDisplay": "8 potongan"
+      },
+      {
+        "fractionDisplay": "9 potongan",
+        "key": "B",
+        "text": "9 potongan"
+      },
+      {
+        "key": "C",
+        "text": "10 potongan",
+        "fractionDisplay": "10 potongan"
+      },
+      {
+        "text": "12 potongan",
+        "fractionDisplay": "12 potongan",
+        "key": "D"
+      }
+    ],
+    "correctAnswer": "C",
+    "points": 6.67,
+    "explanation": {
+      "finalResult": "Banyak potongan = 10 potongan (Pilihan C)",
+      "summary": "Mengubah ke pecahan biasa, lalu mengalikan dengan kebalikan pecahan pembagi.",
+      "steps": [
+        "Banyak potongan = 7 1/2 : 3/4.",
+        "Ubah 7 1/2 menjadi pecahan biasa: (7 × 2 + 1)/2 = 15/2.",
+        "Ubah operasi bagi menjadi perkalian dengan membalik pembagi: (15/2) × (4/3).",
+        "Kalikan pembilang dan penyebut: (15 × 4) / (2 × 3) = 60 / 6 = 10 potongan."
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "number": 8,
+    "category": "Konversi Pecahan",
+    "topicTitle": "Mengubah Pecahan Campuran ke Pecahan Biasa",
+    "type": "single",
+    "imagePath": "/assets/aistudio/5_46dd3318.JPG",
+    "hasContextCard": false,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "",
+    "questionPrompt": "Adik memiliki cokelat sebanyak 2 5/6 batang. Ubahlah jumlah cokelat Adik menjadi pecahan biasa!",
+    "options": [
+      {
+        "fractionDisplay": "11/6 batang",
+        "key": "A",
+        "text": "11/6 batang"
+      },
+      {
+        "fractionDisplay": "13/6 batang",
+        "text": "13/6 batang",
+        "key": "B"
+      },
+      {
+        "fractionDisplay": "17/6 batang",
+        "key": "C",
+        "text": "17/6 batang"
+      },
+      {
+        "text": "19/6 batang",
+        "fractionDisplay": "19/6 batang",
+        "key": "D"
+      }
+    ],
+    "correctAnswer": "C",
+    "points": 6.67,
+    "explanation": {
+      "summary": "Mengalikan bilangan bulat dengan penyebut, lalu menjumlahkan pembilang.",
+      "steps": [
+        "Kalikan bilangan bulat dengan penyebut: 2 × 6 = 12.",
+        "Jumlahkan hasil kali dengan pembilang: 12 + 5 = 17.",
+        "Penyebut tetap bernilai 6."
+      ],
+      "finalResult": "2 5/6 = 17/6 batang (Pilihan C)"
+    }
+  },
+  {
+    "id": 3,
+    "number": 9,
+    "category": "Operasi Penjumlahan Pecahan",
+    "topicTitle": "Penjumlahan Pecahan Campuran Berbeda Penyebut",
+    "type": "single",
+    "imagePath": "/assets/aistudio/4_7049ace6.JPG",
+    "hasContextCard": true,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "Ibu membeli 2 1/2 kg tepung terigu di toko A. Karena masih kurang, Ibu membeli lagi 1 3/4 kg tepung terigu di toko B.",
+    "pins": [
+      {
+        "value": "2 1/2 kg",
+        "label": "Nilai Utama 1"
+      },
+      {
+        "label": "Nilai Utama 2",
+        "value": "1 3/4 kg"
+      }
+    ],
+    "questionPrompt": "Berapa kilogram total tepung terigu yang dibeli Ibu?",
+    "options": [
+      {
+        "key": "A",
+        "text": "3 3/4 kg",
+        "fractionDisplay": "3 3/4 kg"
+      },
+      {
+        "fractionDisplay": "4 kg",
+        "text": "4 kg",
+        "key": "B"
+      },
+      {
+        "text": "4 1/4 kg",
+        "key": "C",
+        "fractionDisplay": "4 1/4 kg"
+      },
+      {
+        "fractionDisplay": "4 1/2 kg",
+        "text": "4 1/2 kg",
+        "key": "D"
+      }
+    ],
+    "correctAnswer": "C",
+    "points": 6.67,
+    "explanation": {
+      "finalResult": "Total tepung = 4 1/4 kg (Pilihan C)",
+      "steps": [
+        "Total = 2 1/2 + 1 3/4.",
+        "Samakan penyebut: 1/2 diubah menjadi 2/4, sehingga 2 1/2 = 2 2/4.",
+        "Jumlahkan bilangan bulat: 2 + 1 = 3.",
+        "Jumlahkan pecahan: 2/4 + 3/4 = 5/4 = 1 1/4.",
+        "Gabungkan: 3 + 1 1/4 = 4 1/4 kg."
+      ],
+      "summary": "Menyamakan penyebut kedua pecahan (KPK dari 2 dan 4 adalah 4) lalu menjumlahkan."
+    }
+  },
+  {
+    "id": 4,
+    "number": 10,
+    "category": "Operasi Pengurangan Pecahan",
+    "topicTitle": "Pengurangan Pecahan Campuran dengan Teknik Peminjaman",
+    "type": "single",
+    "imagePath": "/assets/aistudio/1_fb7d113c.JPG",
+    "hasContextCard": true,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "Ibu memiliki persediaan 5 1/2 kg tepung terigu. Sebanyak 2 3/4 kg digunakan untuk membuat adonan kue pastel.",
+    "pins": [
+      {
+        "value": "5 1/2 kg",
+        "label": "Nilai Utama 1"
+      },
+      {
+        "label": "Nilai Utama 2",
+        "value": "2 3/4 kg"
+      }
+    ],
+    "questionPrompt": "Berapa kilogram sisa tepung terigu persediaan Ibu?",
+    "options": [
+      {
+        "text": "2 1/4 kg",
+        "key": "A",
+        "fractionDisplay": "2 1/4 kg"
+      },
+      {
+        "fractionDisplay": "2 1/2 kg",
+        "text": "2 1/2 kg",
+        "key": "B"
+      },
+      {
+        "fractionDisplay": "2 3/4 kg",
+        "key": "C",
+        "text": "2 3/4 kg"
+      },
+      {
+        "key": "D",
+        "text": "3 kg",
+        "fractionDisplay": "3 kg"
+      }
+    ],
+    "correctAnswer": "C",
+    "points": 6.67,
+    "explanation": {
+      "finalResult": "Sisa tepung = 2 3/4 kg (Pilihan C)",
+      "summary": "Menyamakan penyebut menjadi 4, meminjam 1 dari bilangan bulat 5, lalu mengurangkan.",
+      "steps": [
+        "Sisa persediaan = 5 1/2 - 2 3/4.",
+        "Samakan penyebut: 5 1/2 = 5 2/4.",
+        "Karena 2/4 lebih kecil dari 3/4, pinjam 1 dari 5: 5 2/4 = 4 + 4/4 + 2/4 = 4 6/4.",
+        "Kurangkan: (4 - 2) + (6/4 - 3/4) = 2 + 3/4 = 2 3/4 kg."
+      ]
+    }
+  },
+  {
+    "id": 5,
+    "number": 11,
+    "category": "Operasi Perkalian Pecahan",
+    "topicTitle": "Perkalian Pecahan Campuran dengan Pecahan Biasa",
+    "type": "single",
+    "imagePath": "/assets/aistudio/6_c12d4f7b.JPG",
+    "hasContextCard": true,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "Seorang petani memanen 6 2/5 ton jagung. Sebanyak 5/8 bagian dari hasil panen tersebut akan dijual ke pasar, sedangkan sisanya disimpan.",
+    "pins": [
+      {
+        "value": "6 2/5 ton",
+        "label": "Nilai Utama 1"
+      },
+      {
+        "value": "5/8 bagian",
+        "label": "Nilai Utama 2"
+      }
+    ],
+    "questionPrompt": "Berapa ton jagung yang dijual ke pasar?",
+    "options": [
+      {
+        "text": "3 ton",
+        "fractionDisplay": "3 ton",
+        "key": "A"
+      },
+      {
+        "key": "B",
+        "fractionDisplay": "4 ton",
+        "text": "4 ton"
+      },
+      {
+        "text": "4 1/2 ton",
+        "key": "C",
+        "fractionDisplay": "4 1/2 ton"
+      },
+      {
+        "text": "5 ton",
+        "key": "D",
+        "fractionDisplay": "5 ton"
+      }
+    ],
+    "correctAnswer": "B",
+    "points": 6.67,
+    "explanation": {
+      "summary": "Mengubah pecahan campuran menjadi pecahan biasa, kemudian mengalikan pecahan.",
+      "steps": [
+        "Jagung dijual = 6 2/5 × 5/8.",
+        "Ubah 6 2/5 menjadi pecahan biasa: (6 × 5 + 2)/5 = 32/5.",
+        "Kalikan kedua pecahan: (32/5) × (5/8).",
+        "Sederhanakan pembilang dan penyebut: angka 5 saling mencoret, sehingga tersisa 32/8 = 4."
+      ],
+      "finalResult": "Jagung dijual = 4 ton (Pilihan B)"
+    }
+  },
+  {
+    "id": 6,
+    "number": 12,
+    "category": "Operasi Pembagian Pecahan",
+    "topicTitle": "Pembagian Pecahan Campuran dengan Pecahan Biasa",
+    "type": "single",
+    "imagePath": "/assets/aistudio/3_84172664.JPG",
+    "hasContextCard": true,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "Bu Lani memiliki pita hias sepanjang 7 1/2 meter. Pita tersebut dipotong-potong menjadi beberapa bagian sama panjang, masing-masing 3/4 meter untuk hiasan kado.",
+    "pins": [
+      {
+        "label": "Nilai Utama 1",
+        "value": "7 1/2 meter"
+      },
+      {
+        "value": "3/4 meter per potong",
+        "label": "Nilai Utama 2"
+      }
+    ],
+    "questionPrompt": "Berapa banyak potongan pita yang diperoleh Bu Lani?",
+    "options": [
+      {
+        "text": "8 potongan",
+        "fractionDisplay": "8 potongan",
+        "key": "A"
+      },
+      {
+        "key": "B",
+        "text": "9 potongan",
+        "fractionDisplay": "9 potongan"
+      },
+      {
+        "text": "10 potongan",
+        "key": "C",
+        "fractionDisplay": "10 potongan"
+      },
+      {
+        "fractionDisplay": "12 potongan",
+        "key": "D",
+        "text": "12 potongan"
+      }
+    ],
+    "correctAnswer": "C",
+    "points": 6.67,
+    "explanation": {
+      "finalResult": "Banyak potongan = 10 potongan (Pilihan C)",
+      "steps": [
+        "Banyak potongan = 7 1/2 : 3/4.",
+        "Ubah 7 1/2 menjadi pecahan biasa: (7 × 2 + 1)/2 = 15/2.",
+        "Ubah operasi bagi menjadi perkalian dengan membalik pembagi: (15/2) × (4/3).",
+        "Kalikan pembilang dan penyebut: (15 × 4) / (2 × 3) = 60 / 6 = 10 potongan."
+      ],
+      "summary": "Mengubah ke pecahan biasa, lalu mengalikan dengan kebalikan pecahan pembagi."
+    }
+  },
+  {
+    "id": 1793640679929,
+    "number": 13,
+    "category": "Literasi / Numerasi",
+    "topicTitle": "sssssssssssssssssssssss",
+    "type": "single",
+    "imagePath": "",
+    "hasContextCard": false,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "",
+    "questionPrompt": "sssssssssssssssssssssss",
+    "options": [
+      {
+        "fractionDisplay": "sssssssssssssssss",
+        "text": "sssssssssssssssss",
+        "key": "A"
+      },
+      {
+        "text": "sssssssssssss",
+        "fractionDisplay": "sssssssssssss",
+        "key": "B"
+      },
+      {
+        "key": "C",
+        "fractionDisplay": "ssssssssssssssss",
+        "text": "ssssssssssssssss"
+      },
+      {
+        "key": "D",
+        "text": "ssssssssssssss",
+        "fractionDisplay": "ssssssssssssss"
+      }
+    ],
+    "correctAnswer": "A",
+    "points": 6.67,
+    "explanation": {
+      "summary": "sss",
+      "steps": [
+        "sss"
+      ],
+      "finalResult": "sss"
+    }
+  },
+  {
+    "id": 1793640118337,
+    "number": 14,
+    "category": "Literasi / Numerasi",
+    "topicTitle": "bbxbbbb",
+    "type": "single",
+    "imagePath": "",
+    "hasContextCard": false,
+    "contextHeader": "KONTEKS MASALAH",
+    "contextStory": "",
+    "questionPrompt": "bbbxbbxbbxbxxb",
+    "options": [
+      {
+        "key": "A",
+        "fractionDisplay": "bbbbx",
+        "text": "bbbbx"
+      },
+      {
+        "text": "bbbbb",
+        "fractionDisplay": "bbbbb",
+        "key": "B"
+      },
+      {
+        "key": "C",
+        "fractionDisplay": "bbbb",
+        "text": "bbbb"
+      },
+      {
+        "text": "bbbbb",
+        "fractionDisplay": "bbbbb",
+        "key": "D"
+      }
+    ],
+    "correctAnswer": "A",
+    "points": 6.67,
+    "explanation": {
+      "steps": [
+        "cncvncncn"
+      ],
+      "finalResult": "vmvjkvk",
+      "summary": "hchchc"
+    }
+  }
+]

@@ -489,8 +489,10 @@ app.get(['/health', '/api/health'], (_req, res) => {
 async function startServer() {
   const distDir = path.resolve(__dirname, 'dist');
   const distIndexHtml = path.resolve(distDir, 'index.html');
+  const shouldUseDist = isProduction && fs.existsSync(distIndexHtml);
 
-  if (!isProduction) {
+  if (!shouldUseDist) {
+    console.log('Menggunakan Vite middleware (Dynamic SPA)...');
     const { createServer } = await import('vite');
     const vite = await createServer({
       server: { middlewareMode: true },
@@ -498,6 +500,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
+    console.log('Menyajikan aset produksi dari dist...');
     // Serve production static assets from dist
     app.use(express.static(distDir));
 
@@ -508,16 +511,12 @@ async function startServer() {
 
     // SPA fallback: send index.html for all non-API GET requests
     app.get('*', (_req, res) => {
-      if (fs.existsSync(distIndexHtml)) {
-        res.sendFile(distIndexHtml);
-      } else {
-        res.status(500).send('Application build not found. Please run npm run build.');
-      }
+      res.sendFile(distIndexHtml);
     });
   }
 
   const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`EduTest Server running on http://0.0.0.0:${PORT} (Production: ${isProduction})`);
+    console.log(`EduTest Server running on http://0.0.0.0:${PORT} (Production: ${isProduction}, Mode: ${shouldUseDist ? 'Production Static (dist)' : 'Development Vite Middleware'})`);
   });
 
   // Graceful shutdown on SIGTERM (Cloud Run lifecycle signal)

@@ -26,6 +26,7 @@ import {
   Trash2,
   Plus,
   Flame,
+  Loader2,
 } from 'lucide-react';
 import { auth, isFirebaseConfigured } from '../lib/firebase';
 import { EXAM_QUESTIONS, QuestionData, checkIsAnswerCorrect } from '../data/questions';
@@ -42,6 +43,7 @@ interface TeacherDashboardProps {
   onNewSession: (config: Partial<ExamSessionConfig>, resetSubmissions: boolean) => void;
   onUpdateDuration?: (minutes: number) => void;
   onUpdateQuestions?: (newQuestions: QuestionData[]) => Promise<void> | void;
+  onDeleteQuestion?: (questionId: number) => Promise<void>;
   onResetQuestions?: () => void;
   onSeedSample: () => void;
   onClearSubmissions: () => void;
@@ -55,6 +57,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   onNewSession,
   onUpdateDuration,
   onUpdateQuestions,
+  onDeleteQuestion,
   onResetQuestions,
   onSeedSample,
   onClearSubmissions,
@@ -69,6 +72,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   // Question CRUD modal state
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [questionToEdit, setQuestionToEdit] = useState<QuestionData | null>(null);
+
+  // In-app Delete Confirmation Modal (solusi iframe yang memblokir window.confirm)
+  const [deleteConfirmQuestion, setDeleteConfirmQuestion] = useState<{ id: number; number: number; title: string } | null>(null);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string>('');
+  const [isDeletingProcess, setIsDeletingProcess] = useState(false);
 
   // Quick notification for duration or question update
   const [durationNotice, setDurationNotice] = useState<string>('');
@@ -239,20 +247,51 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     setTimeout(() => setDurationNotice(''), 5000);
   };
 
-  const handleDeleteQuestion = async (qId: number, qNum: number) => {
+  // Handler ketika tombol Hapus pada kartu soal diklik (membuka dialog konfirmasi in-app)
+  const handleRequestDelete = (q: QuestionData) => {
+    console.log('[TeacherDashboard] Tombol Hapus diklik untuk soal ID:', q.id, 'Nomor:', q.number, 'Judul:', q.topicTitle);
     if (activeQuestions.length <= 1) {
-      alert('Ujian harus memiliki minimal 1 butir soal. Tidak dapat menghapus butir terakhir.');
+      setDurationNotice('Ujian harus memiliki minimal 1 butir soal. Tidak dapat menghapus butir terakhir.');
+      setTimeout(() => setDurationNotice(''), 4000);
       return;
     }
-    if (window.confirm(`Apakah Anda yakin ingin menghapus Soal Nomor ${qNum}?`)) {
-      const updated = activeQuestions
-        .filter((q) => q.id !== qId)
-        .map((q, idx) => ({ ...q, number: idx + 1 }));
-      if (onUpdateQuestions) {
+    setDeleteErrorMessage('');
+    setDeleteConfirmQuestion({ id: q.id, number: q.number, title: q.topicTitle });
+  };
+
+  // Handler eksekusi konfirmasi hapus permanen dari Cloud Firestore
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmQuestion) return;
+
+    const targetId = deleteConfirmQuestion.id;
+    const targetNumber = deleteConfirmQuestion.number;
+
+    console.log('[TeacherDashboard] Konfirmasi hapus diterima. Memulai proses penghapusan ID:', targetId);
+    setIsDeletingProcess(true);
+    setDeleteErrorMessage('');
+
+    try {
+      if (onDeleteQuestion) {
+        console.log('[TeacherDashboard] Memanggil onDeleteQuestion(targetId):', targetId);
+        await onDeleteQuestion(targetId);
+        console.log('[TeacherDashboard] onDeleteQuestion berhasil untuk ID:', targetId);
+      } else if (onUpdateQuestions) {
+        console.log('[TeacherDashboard] Fallback ke onUpdateQuestions...');
+        const updated = activeQuestions
+          .filter((q) => q.id !== targetId)
+          .map((q, idx) => ({ ...q, number: idx + 1 }));
         await onUpdateQuestions(updated);
       }
-      setDurationNotice(`Soal nomor ${qNum} berhasil dihapus dari Cloud Firestore.`);
+
+      setDurationNotice(`Soal nomor ${targetNumber} berhasil dihapus permanen dari Cloud Firestore.`);
       setTimeout(() => setDurationNotice(''), 5000);
+      setDeleteConfirmQuestion(null);
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      console.error('[TeacherDashboard] Gagal menghapus butir soal:', e.message || err);
+      setDeleteErrorMessage(e.message || 'Gagal menghapus butir soal dari Cloud Firestore.');
+    } finally {
+      setIsDeletingProcess(false);
     }
   };
 
@@ -845,10 +884,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDeleteQuestion(q.id, q.number)}
-                      disabled={activeQuestions.length <= 1}
-                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 disabled:opacity-40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                      title={activeQuestions.length <= 1 ? 'Minimal harus ada 1 butir soal' : 'Hapus soal ini'}
+                      onClick={() => handleRequestDelete(q)}
+                      disabled={activeQuestions.length <= 1 || (isDeletingProcess && deleteConfirmQuestion?.id === q.id)}
+                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 disabled:opacity-40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:cursor-not-allowed"
+                      title={activeQuestions.length <= 1 ? 'Minimal harus ada 1 butir soal' : 'Hapus butir soal ini dari Cloud Firestore'}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Hapus</span>
@@ -1707,6 +1746,78 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus Soal (In-App Dialog, kebal blokir iframe browser) */}
+      {deleteConfirmQuestion && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto"
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-100 flex flex-col space-y-4 animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-3 bg-rose-100 text-rose-600 rounded-xl shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-slate-900">
+                  Hapus Butir Soal Permanen?
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus <strong>Soal #{deleteConfirmQuestion.number}</strong> ({deleteConfirmQuestion.title})?
+                </p>
+                <div className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 mt-2">
+                  <span className="font-semibold text-slate-400">ID Dokumen Firestore:</span>{' '}
+                  <span className="text-rose-600 font-bold">{deleteConfirmQuestion.id}</span>
+                </div>
+              </div>
+            </div>
+
+            {deleteErrorMessage && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-rose-700 text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span className="font-medium">{deleteErrorMessage}</span>
+              </div>
+            )}
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Dokumen ini akan dihapus secara permanen dari koleksi <code>questions</code> di Firebase Cloud Firestore dan tidak dapat dikembalikan.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmQuestion(null)}
+                disabled={isDeletingProcess}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeletingProcess}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow transition-all flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+              >
+                {isDeletingProcess ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Menghapus dari Firestore...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Ya, Hapus Permanen</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -31,6 +31,7 @@ import { isFirebaseConfigured } from './lib/firebase';
 import {
   getQuestionsFromFirestore,
   syncAllQuestionsToFirestore,
+  deleteQuestionFromFirestore,
   seedInitialQuestionsIfNeeded,
 } from './services/questionService';
 import { subscribeToTeacherAuth } from './services/authService';
@@ -294,6 +295,68 @@ export default function App() {
       });
     } catch (e) {
       console.warn('Questions server sync failed:', e);
+    }
+  };
+
+  // Handler: Teacher deletes a specific question permanently by its real document ID
+  const handleDeleteQuestion = async (questionId: number): Promise<void> => {
+    console.log('[App.tsx] handleDeleteQuestion dipanggil untuk questionId:', questionId);
+
+    // 1. Eksekusi deleteDoc() pada dokumen spesifik di koleksi Firestore
+    if (isFirebaseConfigured) {
+      console.log('[App.tsx] Menjalankan deleteQuestionFromFirestore:', questionId);
+      await deleteQuestionFromFirestore(questionId);
+      console.log('[App.tsx] Dokumen berhasil dihapus dari Firestore.');
+    }
+
+    // 2. Hitung daftar butir tersisa dan re-index nomor urutnya
+    const remainingQuestions = questions
+      .filter((q) => q.id !== questionId)
+      .map((q, idx) => ({ ...q, number: idx + 1 }));
+
+    // 3. Sinkronkan nomor urut soal yang tersisa ke Firestore jika masih ada soal
+    if (isFirebaseConfigured && remainingQuestions.length > 0) {
+      try {
+        console.log('[App.tsx] Menyinkronkan re-index nomor urut soal tersisa ke Firestore...');
+        await syncAllQuestionsToFirestore(remainingQuestions);
+      } catch (syncErr) {
+        console.warn('Penyesuaian nomor urut setelah hapus soal gagal di Firestore:', syncErr);
+      }
+    }
+
+    // 4. Muat ulang bank soal terbaru langsung dari Firestore untuk memastikan integritas data
+    let freshList: QuestionData[] = remainingQuestions;
+    if (isFirebaseConfigured) {
+      try {
+        console.log('[App.tsx] Memuat ulang butir soal terbaru dari Firestore...');
+        const fsQuestions = await getQuestionsFromFirestore();
+        if (fsQuestions && fsQuestions.length > 0) {
+          freshList = fsQuestions;
+          console.log('[App.tsx] Data Firestore berhasil dimuat ulang. Total soal tersisa:', freshList.length);
+        }
+      } catch (fsErr) {
+        console.warn('Gagal memuat ulang setelah penghapusan:', fsErr);
+      }
+    }
+
+    // 5. Perbarui state lokal dan cache
+    setQuestions(freshList);
+    try {
+      localStorage.setItem(STORAGE_QUESTIONS_KEY, JSON.stringify(freshList));
+    } catch (e) {
+      console.warn(e);
+    }
+
+    // 6. Sinkronkan ke server Express untuk peserta ujian
+    try {
+      await fetch('/api/exam/questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions: freshList }),
+      });
+      console.log('[App.tsx] Sinkronisasi ke server Express berhasil.');
+    } catch (e) {
+      console.warn('Sinkronisasi server gagal setelah hapus soal:', e);
     }
   };
 
@@ -663,6 +726,7 @@ export default function App() {
             onNewSession={handleNewSession}
             onUpdateDuration={handleUpdateDuration}
             onUpdateQuestions={handleUpdateQuestions}
+            onDeleteQuestion={handleDeleteQuestion}
             onResetQuestions={handleResetQuestions}
             onSeedSample={handleSeedSample}
             onClearSubmissions={handleClearSubmissions}

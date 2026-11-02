@@ -260,7 +260,22 @@ var app = express();
 var isProduction = process.env.NODE_ENV === "production" || Boolean(process.env.K_SERVICE) || process.env.NODE_ENV !== "development" && fs.existsSync(path.resolve(__dirname, "dist", "index.html"));
 var PORT = isProduction ? Number(process.env.PORT) || 8080 : 3e3;
 app.use(express.json({ limit: "10mb" }));
-var examQuestions = [...EXAM_QUESTIONS];
+var QUESTIONS_FILE_PATH = path.resolve(__dirname, "server_questions.json");
+var examQuestions = (() => {
+  try {
+    if (fs.existsSync(QUESTIONS_FILE_PATH)) {
+      const content = fs.readFileSync(QUESTIONS_FILE_PATH, "utf-8");
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        console.log(`Server memuat ${parsed.length} butir soal dari persistent storage server_questions.json`);
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn("Gagal membaca server_questions.json:", e);
+  }
+  return [...EXAM_QUESTIONS];
+})();
 var currentSession = {
   id: "sesi-1",
   sessionCode: "LIT-NUM-2026",
@@ -365,8 +380,32 @@ app.get("/api/exam/submissions", (req, res) => {
   }
   res.json({ success: true, submissions });
 });
-app.get("/api/exam/questions", (_req, res) => {
-  res.json({ success: true, questions: examQuestions });
+app.get("/api/exam/questions", (req, res) => {
+  const isStudentRequest = req.query.role === "student" || req.query.for === "student";
+  if (isStudentRequest && !currentSession.isActive) {
+    return res.status(403).json({
+      success: false,
+      message: "Sesi ujian sedang tidak aktif atau telah ditutup oleh guru pengampu.",
+      questions: []
+    });
+  }
+  if (isStudentRequest) {
+    const sanitizedQuestions = examQuestions.map((q) => {
+      const { correctAnswer: _discardKey, explanation: _discardExpl, ...safeQuestion } = q;
+      const sanitizedStatements = q.statements?.map((s) => ({
+        id: s.id,
+        text: s.text,
+        correctAnswer: "Benar"
+      }));
+      return {
+        ...safeQuestion,
+        correctAnswer: "",
+        statements: sanitizedStatements
+      };
+    });
+    return res.json({ success: true, questions: sanitizedQuestions, sessionActive: currentSession.isActive });
+  }
+  res.json({ success: true, questions: examQuestions, sessionActive: currentSession.isActive });
 });
 app.post("/api/exam/questions", (req, res) => {
   const { questions } = req.body;
@@ -379,10 +418,22 @@ app.post("/api/exam/questions", (req, res) => {
     number: index + 1,
     points: Math.round(100 / questions.length * 100) / 100
   }));
+  try {
+    fs.writeFileSync(QUESTIONS_FILE_PATH, JSON.stringify(examQuestions, null, 2), "utf-8");
+  } catch (err) {
+    console.warn("Gagal menyimpan ke server_questions.json:", err);
+  }
   res.json({ success: true, questions: examQuestions });
 });
 app.post("/api/exam/questions/reset", (_req, res) => {
   examQuestions = [...EXAM_QUESTIONS];
+  try {
+    if (fs.existsSync(QUESTIONS_FILE_PATH)) {
+      fs.unlinkSync(QUESTIONS_FILE_PATH);
+    }
+  } catch (err) {
+    console.warn("Gagal menghapus server_questions.json:", err);
+  }
   res.json({ success: true, questions: examQuestions, message: "Bank soal telah dikembalikan ke format default." });
 });
 app.post("/api/exam/submit", (req, res) => {
@@ -566,7 +617,9 @@ app.get(["/health", "/api/health"], (_req, res) => {
 async function startServer() {
   const distDir = path.resolve(__dirname, "dist");
   const distIndexHtml = path.resolve(distDir, "index.html");
-  if (!isProduction) {
+  const shouldUseDist = isProduction && fs.existsSync(distIndexHtml);
+  if (!shouldUseDist) {
+    console.log("Menggunakan Vite middleware (Dynamic SPA)...");
     const { createServer } = await import("vite");
     const vite = await createServer({
       server: { middlewareMode: true },
@@ -574,20 +627,17 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
+    console.log("Menyajikan aset produksi dari dist...");
     app.use(express.static(distDir));
     app.all("/api/*", (_req, res) => {
       res.status(404).json({ success: false, message: "Endpoint API tidak ditemukan." });
     });
     app.get("*", (_req, res) => {
-      if (fs.existsSync(distIndexHtml)) {
-        res.sendFile(distIndexHtml);
-      } else {
-        res.status(500).send("Application build not found. Please run npm run build.");
-      }
+      res.sendFile(distIndexHtml);
     });
   }
   const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`EduTest Server running on http://0.0.0.0:${PORT} (Production: ${isProduction})`);
+    console.log(`EduTest Server running on http://0.0.0.0:${PORT} (Production: ${isProduction}, Mode: ${shouldUseDist ? "Production Static (dist)" : "Development Vite Middleware"})`);
   });
   process.on("SIGTERM", () => {
     console.log("SIGTERM signal received: closing HTTP server gracefully");

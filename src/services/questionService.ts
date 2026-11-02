@@ -164,28 +164,39 @@ export async function saveQuestionToFirestore(question: QuestionData): Promise<v
 /**
  * Menghapus dokumen soal dari koleksi questions di Cloud Firestore.
  */
-export async function deleteQuestionFromFirestore(questionId: number): Promise<void> {
+export async function deleteQuestionFromFirestore(questionId: number | string): Promise<void> {
   const firestore = db;
+  console.log('[questionService] deleteQuestionFromFirestore dipanggil untuk ID:', questionId);
+
   if (!firestore || !isFirebaseConfigured) {
-    throw new Error('Firebase belum siap.');
+    console.error('[questionService] Error: Firebase belum siap atau belum terkonfigurasi.');
+    throw new Error('Firebase belum siap atau terkonfigurasi.');
   }
 
   const docId = getQuestionDocId(questionId);
   const docRef = doc(firestore, QUESTIONS_COLLECTION, docId);
+  console.log(`[questionService] Target document reference: ${QUESTIONS_COLLECTION}/${docId}`);
 
   try {
+    console.log(`[questionService] Menjalankan deleteDoc(docRef)...`);
     await deleteDoc(docRef);
-    console.log(`Dokumen soal [${docId}] berhasil dihapus dari Cloud Firestore.`);
+    console.log(`[questionService] deleteDoc BERHASIL! Dokumen [${docId}] terhapus permanen dari Cloud Firestore.`);
   } catch (error: unknown) {
     const err = error as { message?: string; code?: string };
-    console.error(`Gagal menghapus soal [${docId}]:`, err.message);
-    throw new Error(`Gagal menghapus soal dari Cloud Firestore: ${err.message || err.code}`);
+    console.error(`[questionService] deleteDoc GAGAL untuk dokumen [${docId}]:`, err.message, err.code);
+    if (err.code === 'permission-denied') {
+      throw new Error(
+        'Izin ditolak oleh Cloud Firestore (permission-denied). Pastikan akun Anda telah masuk sebagai Guru dengan role: "teacher" dan active: true di koleksi users.'
+      );
+    }
+    throw new Error(`Gagal menghapus butir soal [${docId}] dari Cloud Firestore: ${err.message || err.code}`);
   }
 }
 
 /**
  * Menyimpan seluruh daftar soal sekaligus secara atomik menggunakan WriteBatch ke Firestore.
- * Memastikan penomoran soal (1, 2, ..., N) dan bobot terindeks dengan rapi.
+ * Memastikan penomoran soal (1, 2, ..., N) dan bobot terindeks dengan rapi,
+ * serta menghapus dokumen soal lama di Firestore yang sudah tidak ada dalam daftar yang di-sync.
  */
 export async function syncAllQuestionsToFirestore(questions: QuestionData[]): Promise<void> {
   const firestore = db;
@@ -199,13 +210,28 @@ export async function syncAllQuestionsToFirestore(questions: QuestionData[]): Pr
 
   try {
     const batch = writeBatch(firestore);
+    const targetDocIds = new Set<string>();
 
     questions.forEach((q, index) => {
       const docId = getQuestionDocId(q.id);
+      targetDocIds.add(docId);
       const docRef = doc(firestore, QUESTIONS_COLLECTION, docId);
       const cleanData = sanitizeQuestionForFirestore(q, index);
       batch.set(docRef, cleanData, { merge: true });
     });
+
+    // Periksa koleksi questions di Firestore dan hapus dokumen yang tidak ada di targetDocIds
+    try {
+      const existingSnap = await getDocs(collection(firestore, QUESTIONS_COLLECTION));
+      existingSnap.forEach((d) => {
+        if (!targetDocIds.has(d.id)) {
+          console.log(`Menghapus dokumen yang dieliminasi [${d.id}] dari Cloud Firestore...`);
+          batch.delete(d.ref);
+        }
+      });
+    } catch (e) {
+      console.warn('Gagal mendeteksi dokumen yang dieliminasi saat batch sync:', e);
+    }
 
     await batch.commit();
     console.log(`Batch commit berhasil: ${questions.length} butir soal tersimpan permanen di Cloud Firestore.`);
